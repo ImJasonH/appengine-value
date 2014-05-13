@@ -1,19 +1,19 @@
 // +build appengine
 
-// Package secrets provides a utility method to retrieve secret strings in an
+// Package value provides a utility method to retrieve string values in an
 // App Engine app, so they can be stored in the datastore instead of in source.
 //
-// Secret values should be set in the datastore, and will be cached in memcache
-// and local instance memory for quick lookup. Values should not be changed once
-// they are set.
+// Values should be set in the datastore using the App Engine Admin UI, and will
+// be cached in memcache and local instance memory for quick lookup. Values
+// should not be changed once they are set.
 //
-// Intended use cases are OAuth client secrets, for instance, which are used
-// across many requests are should be quick to look up, but shouldn't be stored
-// in source control as consts.
+// Intended use cases are OAuth client secrets or API keys, for instance, which
+// are used across many requests are should be quick to look up, but shouldn't
+// be stored in source control as consts for security reasons.
 //
 // Values are not encrypted or obfuscated, and will be easily visible to any
 // other app admin.
-package secrets
+package value
 
 import (
 	"appengine"
@@ -21,27 +21,27 @@ import (
 	"appengine/memcache"
 )
 
-// Entity name used to store secrets in the datastore.
-var EntityName = "Secrets"
+// Entity name used to store values in the datastore.
+var EntityName = "Values"
 
-// Prefix to use when storing secrets in memcache.
+// Prefix to use when storing values in memcache.
 var MemcacheKeyPrefix = ""
 
 var local = map[string]string{}
 
-// Get returns the secret value associated with the key.
+// Get returns the value associated with the key.
 //
 // If the value cannot be found in any of local instance memory, memcache, or
 // the datastore, an empty string will be returned.
 func Get(c appengine.Context, key string) string {
 	if v, ok := local[key]; ok {
-		// Found secret in instance memory, return it.
+		// Found value in instance memory, return it.
 		return v
 	}
 
 	i, err := memcache.Get(c, key)
 	if err == nil {
-		// Found secret in memcache, return it.
+		// Found value in memcache, return it.
 		return string(i.Value)
 	}
 
@@ -49,7 +49,7 @@ func Get(c appengine.Context, key string) string {
 		c.Errorf("error getting %q from memcache: %v", key, err)
 	}
 
-	// Get secret from datastore if missing from memcache.
+	// Get value from datastore if missing from memcache.
 	k := datastore.NewKey(c, EntityName, key, 0, nil)
 	var e struct {
 		Value string `datastore:"-"`
@@ -59,10 +59,10 @@ func Get(c appengine.Context, key string) string {
 		return ""
 	}
 
-	// Store secret in instance memory for next time.
+	// Store value in instance memory for next time.
 	local[key] = e.Value
 
-	// Store secret in memcache for next time.
+	// Store value in memcache for next time.
 	if err := memcache.Set(c, &memcache.Item{
 		Key:   MemcacheKeyPrefix + key,
 		Value: []byte(e.Value),
