@@ -1,5 +1,5 @@
-// Package secrets provides a utility method to store and retrieve secret
-// strings in an App Engine app, so they don't need to be stored in source.
+// Package secrets provides a utility method to retrieve secret strings in an
+// App Engine app, so they can be stored in the datastore instead of in source.
 //
 // Secret values should be set in the datastore, and will be cached in memcache
 // and local instance memory for quick lookup. Values should not be changed once
