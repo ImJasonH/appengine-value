@@ -52,7 +52,7 @@ func Get(c appengine.Context, key string) string {
 	// Get value from datastore if missing from memcache.
 	k := datastore.NewKey(c, EntityName, key, 0, nil)
 	var e struct {
-		Value string `datastore:"-"`
+		Value string `datastore:",noindex"`
 	}
 	if err := datastore.Get(c, k, &e); err != nil {
 		c.Errorf("error getting %q from datastore: %v", key, err)
