@@ -1,3 +1,5 @@
+// +build appengine
+
 // Package secrets provides a utility method to retrieve secret strings in an
 // App Engine app, so they can be stored in the datastore instead of in source.
 //
