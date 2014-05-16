@@ -103,5 +103,5 @@ func Set(c appengine.Context, key string, val string) error {
 		// Put the value in the datastore.
 		_, err := datastore.Put(tc, k, e{Value: key})
 		return err
-	})
+	}, nil)
 }
