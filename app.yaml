@@ -1,0 +1,9 @@
+application: sample
+version: forlocaldebugging
+runtime: go
+api_version: go1
+threadsafe: yes
+
+handlers:
+ - url: /_ah/value/.*
+   script: _go_app

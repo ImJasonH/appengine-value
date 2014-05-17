@@ -3,8 +3,11 @@
 // Package value provides a utility method to retrieve string values in an
 // App Engine app, so they can be stored in the datastore instead of in source.
 //
-// Values can be inserted (but not updated) using Set, or by using the App Engine
-// Admin UI. Once retrieved, values will be cached in memcache and local instance
+// Values can be added using the admin interface served at /_ah/value/admin
+// (app.yaml must map this URL to script: _go_app to support this), or by using
+// the App Engine Datastore Viewer UI.
+//
+// Once retrieved, values will be cached in memcache and local instance
 // memory for quick lookup. Values cannot be updated, except via the Admin UI.
 //
 // Intended use cases are OAuth client secrets or API keys, for instance, which
@@ -17,6 +20,10 @@ package value
 
 import (
 	"errors"
+	"fmt"
+	"html/template"
+	"net/http"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
@@ -24,8 +31,8 @@ import (
 	"appengine/user"
 )
 
-// Entity name used to store values in the datastore.
-var EntityName = "Values"
+// Kind is the name used to store values in the datastore.
+var Kind = "Values"
 
 // Prefix to use when storing values in memcache.
 var MemcacheKeyPrefix = ""
@@ -57,7 +64,7 @@ func Get(c appengine.Context, key string) string {
 	}
 
 	// Get value from datastore if missing from memcache.
-	k := datastore.NewKey(c, EntityName, key, 0, nil)
+	k := datastore.NewKey(c, Kind, key, 0, nil)
 	var e e
 	if err := datastore.Get(c, k, &e); err != nil {
 		c.Errorf("error getting %q from datastore: %v", key, err)
@@ -78,11 +85,81 @@ func Get(c appengine.Context, key string) string {
 	return e.Value
 }
 
-func Set(c appengine.Context, key string, val string) error {
+func init() {
+	http.HandleFunc("/_ah/value/admin", adminHandler)
+	http.HandleFunc("/_ah/value/update", updateHandler)
+}
+
+var adminTmpl = template.Must(template.New("admin").Parse(`<html><body>
+<h1>Admin</h1>
+<form action="/_ah/value/update" method="POST">
+<table>
+{{range $key, $val := .}}
+  <tr><td>{{$key}}</td><td>{{$val}}</td><tr>
+{{else}}
+<b>no values currently configured</b><br />
+{{end}}
+<tr><td><input type="text" name="key"></input></td><td><input type="text" name="val"></input></td></tr>
+<input type="submit" value="Save"></input>
+</table>
+</form>
+</body></html>`))
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+	c := appengine.NewContext(r)
 	if !user.IsAdmin(c) {
-		return errors.New("only admin users can set values")
+		if user.Current(c) == nil {
+			loginURL, _ := user.LoginURL(c, "/_ah/value/admin")
+			fmt.Fprintf(w, "<a href='%s'>Log in</a>", loginURL)
+		} else {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
+		return
+	}
+	if r.Method != "GET" {
+		return
+	}
+	v := map[string]string{}
+	q := datastore.NewQuery(Kind)
+	for t := q.Run(c); ; {
+		var e e
+		k, err := t.Next(&e)
+		if err == datastore.Done {
+			break
+		} else if err != nil {
+			c.Errorf("%+v", err)
+			return
+		}
+		v[k.StringID()] = e.Value
 	}
 
+	// TODO
+	adminTmpl.Execute(w, v)
+}
+
+func updateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Redirect(w, r, "/_ah/value/admin", http.StatusSeeOther)
+		return
+	}
+	c := appengine.NewContext(r)
+	if !user.IsAdmin(c) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	key := r.FormValue("key")
+	val := r.FormValue("val")
+	if err := set(c, key, val); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// TODO: remove this hack.
+	time.Sleep(time.Millisecond * 500)
+	http.Redirect(w, r, "/_ah/value/admin", http.StatusSeeOther)
+}
+
+func set(c appengine.Context, key string, val string) error {
 	if _, ok := local[key]; ok {
 		return errors.New("key found in local instance")
 	}
@@ -91,7 +168,7 @@ func Set(c appengine.Context, key string, val string) error {
 	}
 	return datastore.RunInTransaction(c, func(tc appengine.Context) error {
 		// Fail if the value is already stored.
-		k := datastore.NewKey(c, EntityName, key, 0, nil)
+		k := datastore.NewKey(c, Kind, key, 0, nil)
 		if err := datastore.Get(tc, k, nil); err == nil {
 			return errors.New("key found in datastore")
 		} else if err == datastore.ErrNoSuchEntity {
@@ -101,7 +178,7 @@ func Set(c appengine.Context, key string, val string) error {
 		}
 
 		// Put the value in the datastore.
-		_, err := datastore.Put(tc, k, e{Value: key})
+		_, err := datastore.Put(tc, k, &e{Value: key})
 		return err
 	}, nil)
 }
