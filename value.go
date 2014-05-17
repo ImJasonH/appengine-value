@@ -100,8 +100,8 @@ var adminTmpl = template.Must(template.New("admin").Parse(`<html><body>
 <b>no values currently configured</b><br />
 {{end}}
 <tr><td><input type="text" name="key"></input></td><td><input type="text" name="val"></input></td></tr>
-<input type="submit" value="Save"></input>
 </table>
+<input type="submit" value="Save"></input>
 </form>
 </body></html>`))
 
@@ -178,7 +178,7 @@ func set(c appengine.Context, key string, val string) error {
 		}
 
 		// Put the value in the datastore.
-		_, err := datastore.Put(tc, k, &e{Value: key})
+		_, err := datastore.Put(tc, k, &e{Value: val})
 		return err
 	}, nil)
 }
