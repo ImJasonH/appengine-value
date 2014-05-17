@@ -9,7 +9,7 @@ Solution
 -----
 
 ```
-import "github.com/ImJasonH/appengine-value"
+import value "github.com/ImJasonH/appengine-value"
 // ...
 clientSecret := value.Get("client_secret")
 ```
