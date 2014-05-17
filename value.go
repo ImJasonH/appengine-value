@@ -3,12 +3,12 @@
 // Package value provides a utility method to retrieve string values in an
 // App Engine app, so they can be stored in the datastore instead of in source.
 //
-// Values can be added using the admin interface served at /_ah/value/admin
-// (app.yaml must map this URL to script: _go_app to support this), or by using
-// the App Engine Datastore Viewer UI.
+// Values can be added and removed using the admin interface served at
+// /_ah/value/admin (app.yaml must map this URL to script: _go_app to support
+// this), or by using the App Engine Datastore Viewer UI.
 //
 // Once retrieved, values will be cached in memcache and local instance
-// memory for quick lookup. Values cannot be updated, except via the Admin UI.
+// memory for quick lookup.
 //
 // Intended use cases are OAuth client secrets or API keys, for instance, which
 // are used across many requests are should be quick to look up, but shouldn't
@@ -92,17 +92,27 @@ func init() {
 
 var adminTmpl = template.Must(template.New("admin").Parse(`<html><body>
 <h1>Admin</h1>
-<form action="/_ah/value/update" method="POST">
 <table>
 {{range $key, $val := .}}
-  <tr><td>{{$key}}</td><td>{{$val}}</td><tr>
+  <form action="/_ah/value/update" method="POST">
+    <tr>
+    <input type="hidden" name="delete_key" value="{{$key}}"></input>
+    <td>{{$key}}</td>
+    <td>{{$val}}</td>
+    <td><input type="submit" value="Delete"></input></td>
+    </tr>
+  </form>
 {{else}}
-<b>no values currently configured</b><br />
+  <tr><td colspan="3"><center><b>no values currently configured</b></center><td></tr>
 {{end}}
-<tr><td><input type="text" name="key"></input></td><td><input type="text" name="val"></input></td></tr>
-</table>
-<input type="submit" value="Save"></input>
+<form action="/_ah/value/update" method="POST">
+  <tr>
+  <td><input type="text" name="key"></input></td>
+  <td><input type="text" name="val"></input></td>
+  <td><input type="submit" value="Add"></input></td>
+  </tr>
 </form>
+</table>
 </body></html>`))
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,14 +137,15 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		if err == datastore.Done {
 			break
 		} else if err != nil {
-			c.Errorf("%+v", err)
+			c.Errorf("%v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		v[k.StringID()] = e.Value
 	}
-
-	// TODO
-	adminTmpl.Execute(w, v)
+	if err := adminTmpl.Execute(w, v); err != nil {
+		c.Warningf("error executing template: %v", err)
+	}
 }
 
 func updateHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,11 +159,27 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := r.FormValue("key")
-	val := r.FormValue("val")
-	if err := set(c, key, val); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	deleteKey := r.FormValue("delete_key")
+	if deleteKey != "" {
+		delete(local, deleteKey)
+		if err := memcache.Delete(c, deleteKey); err != nil && err != memcache.ErrCacheMiss {
+			c.Errorf("error deleting %q from memcache: %v", deleteKey, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		k := datastore.NewKey(c, Kind, deleteKey, 0, nil)
+		if err := datastore.Delete(c, k); err != nil {
+			c.Errorf("error deleting %q from datastore: %v", deleteKey, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		key := r.FormValue("key")
+		val := r.FormValue("val")
+		if err := set(c, key, val); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	// TODO: remove this hack.
 	time.Sleep(time.Millisecond * 500)
