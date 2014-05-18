@@ -5,16 +5,52 @@ Problem
 
 Your app requires secret values (OAuth secrets, API keys, passwords) and you rightly don't want to specify these values as consts in your source code.
 
+**Don't do this!**
+
+```
+const (
+	clientID := "123456.clientaccount.foo"
+	clientSecret := "s8p3rs3cr1t"
+)
+```
+
 Solution
 -----
 
+**Do this instead**
 ```
 import value "github.com/ImJasonH/appengine-value"
-// ...
-clientSecret := value.Get("client_secret")
+
+func doOAuth(c appengine.Context) {
+	clientID := value.Get(c, "client_id")
+	clientSecret := value.Get(c, "client_secret")
+        // use clientID and clientSecret
+}
 ```
 
-That's it! The secret will be retrieved from `datastore`, `memcache`, or a `map` in local instance memory, whichever's faster.
+If you have multiple values, you can **batch lookups**:
+```
+func doOAuth(c appengine.Context) {
+	m := value.GetMulti(c, "client_id", "client_secret")
+	// use m["clientID"] and m["clientSecret"]
+}
+```
+
+**Or define values like flags**
+```
+var (
+	clientID =     value.String("client_id")
+	clientSecret = value.String("client_secret")
+)
+
+func doOAuth(c appengine.Context) {
+	value.Init(c)
+	// use *clientID and *clientSecret
+}
+```
+
+Configuration
+-----
 
 To set or unset values, use the admin UI which is served at `/_ah/value/admin` -- be sure to map this in your `app.yaml`:
 
@@ -25,4 +61,4 @@ handlers:
   login: admin
 ```
 
-(You can always remove the mapping if you're done setting values)
+(You can always remove the URL mapping if you're done setting values)
