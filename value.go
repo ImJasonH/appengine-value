@@ -7,8 +7,7 @@
 // /_ah/value/admin (app.yaml must map this URL to script: _go_app to support
 // this), or by using the App Engine Datastore Viewer UI.
 //
-// Once retrieved, values will be cached in memcache and local instance
-// memory for quick lookup.
+// Once retrieved, values will be cached in memcache for quick lookup.
 //
 // Intended use cases are OAuth client secrets or API keys, for instance, which
 // are used across many requests are should be quick to look up, but shouldn't
@@ -30,22 +29,15 @@ var Kind = "Values"
 // Prefix to use when storing values in memcache.
 var MemcacheKeyPrefix = ""
 
-var local = map[string]string{}
-
 type e struct {
 	Value string `datastore:",noindex"`
 }
 
 // Get returns the value associated with the key.
 //
-// If the value cannot be found in any of local instance memory, memcache, or
-// the datastore, an empty string will be returned.
+// If the value cannot be found in memcache or datastore, an empty string will
+// be returned.
 func Get(c appengine.Context, key string) string {
-	if v, ok := local[key]; ok {
-		// Found value in instance memory, return it.
-		return v
-	}
-
 	i, err := memcache.Get(c, key)
 	if err == nil {
 		// Found value in memcache, return it.
@@ -63,9 +55,6 @@ func Get(c appengine.Context, key string) string {
 		c.Errorf("error getting %q from datastore: %v", key, err)
 		return ""
 	}
-
-	// Store value in instance memory for next time.
-	local[key] = e.Value
 
 	// Store value in memcache for next time.
 	if err := memcache.Set(c, &memcache.Item{

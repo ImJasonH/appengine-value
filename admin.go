@@ -89,7 +89,6 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	deleteKey := r.FormValue("delete_key")
 	if deleteKey != "" {
-		delete(local, deleteKey)
 		if err := memcache.Delete(c, deleteKey); err != nil && err != memcache.ErrCacheMiss {
 			c.Errorf("error deleting %q from memcache: %v", deleteKey, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -115,9 +114,6 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func set(c appengine.Context, key string, val string) error {
-	if _, ok := local[key]; ok {
-		return errors.New("key found in local instance")
-	}
 	if _, err := memcache.Get(c, key); err != memcache.ErrCacheMiss {
 		return errors.New("key found in memcache")
 	}
