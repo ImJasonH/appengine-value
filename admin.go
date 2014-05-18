@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 
 	"appengine"
@@ -59,6 +60,17 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		return
 	}
+
+	val := r.FormValue("val")
+	if val != "" {
+		keys := strings.Split(val, ",")
+		m := GetMulti(c, keys...)
+		for _, v := range keys {
+			fmt.Fprintf(w, "%s: %q\n", v, m[v])
+		}
+		return
+	}
+
 	v := map[string]string{}
 	q := datastore.NewQuery(Kind)
 	for t := q.Run(c); ; {
