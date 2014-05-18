@@ -67,10 +67,13 @@ func GetMulti(c appengine.Context, key ...string) map[string]string {
 			keys = append(keys, datastore.NewKey(c, Kind, k, 0, nil))
 		}
 	}
-	fromDS := []e{}
+	fromDS := make([]e, len(keys))
 	if err := datastore.GetMulti(c, keys, fromDS); err != nil {
+		// TODO: appengine.MultiError may contain only ErrNoSuchEntity errs,
+		// in which case we should populate as many results as exist. If any
+		// are not ErrNoSuchEntity then something actually went wrong.
 		c.Errorf("error getting multi from datastore: %v", err)
-		return map[string]string{}
+		return m
 	}
 	items := []*memcache.Item{}
 	for i, de := range fromDS {
