@@ -1,6 +1,6 @@
 // +build appengine
 
-// Package value provides a utility method to retrieve string values in an
+// Package value provides a utility methods to retrieve string values in an
 // App Engine app, so they can be stored in the datastore instead of in source.
 //
 // Values can be added and removed using the admin interface served at
@@ -38,35 +38,12 @@ type e struct {
 // If the value cannot be found in memcache or datastore, an empty string will
 // be returned.
 func Get(c appengine.Context, key string) string {
-	i, err := memcache.Get(c, key)
-	if err == nil {
-		// Found value in memcache, return it.
-		return string(i.Value)
-	}
-
-	if err != nil && err != memcache.ErrCacheMiss {
-		c.Errorf("error getting %q from memcache: %v", key, err)
-	}
-
-	// Get value from datastore if missing from memcache.
-	k := datastore.NewKey(c, Kind, key, 0, nil)
-	var e e
-	if err := datastore.Get(c, k, &e); err != nil {
-		c.Errorf("error getting %q from datastore: %v", key, err)
-		return ""
-	}
-
-	// Store value in memcache for next time.
-	if err := memcache.Set(c, &memcache.Item{
-		Key:   MemcacheKeyPrefix + key,
-		Value: []byte(e.Value),
-	}); err != nil {
-		c.Errorf("error setting %q in memcache: %v", key, err)
-	}
-
-	return e.Value
+	return GetMulti(c, key)[key]
 }
 
+// GetMulti is a batch version of Get. It returns a map keyed on the provided keys.
+//
+// If a key is not found in memcache or datastore, it will map to an empty string.
 func GetMulti(c appengine.Context, key ...string) map[string]string {
 	m := map[string]string{}
 
@@ -99,7 +76,7 @@ func GetMulti(c appengine.Context, key ...string) map[string]string {
 	for i, de := range fromDS {
 		m[keys[i].StringID()] = de.Value
 		items = append(items, &memcache.Item{
-			Key:   MemcacheKeyPrefix+keys[i].StringID(),
+			Key:   MemcacheKeyPrefix + keys[i].StringID(),
 			Value: []byte(de.Value),
 		})
 	}
@@ -113,20 +90,31 @@ func GetMulti(c appengine.Context, key ...string) map[string]string {
 
 var vals = map[string]*string{}
 
+// String defines a string value with specified name.
+// The return value is the address of a string variable that stores the value when Init is called.
 func String(key string) *string {
 	p := new(string)
 	StringVar(p, key)
 	return p
 }
 
+// StringVar defines a string value with specified name.
+// The argument p points to a string variable in which to store the value when Init is called.
 func StringVar(p *string, key string) {
 	vals[key] = p
 }
 
+// Init populates values defined using String or StringVar.
+// Must be called after all values are defined and before values are accessed by the program.
 func Init(c appengine.Context) {
-	// TODO: GetMulti
+	keys := make([]string, len(vals))
+	i := 0
 	for k, _ := range vals {
-		v := Get(c, k)
+		keys[i] = k
+		i++
+	}
+	m := GetMulti(c, keys...)
+	for k, v := range m {
 		vals[k] = &v
 	}
 }
