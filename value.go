@@ -115,8 +115,12 @@ var vals = map[string]*string{}
 
 func String(key string) *string {
 	p := new(string)
-	vals[key] = p
+	StringVar(p, key)
 	return p
+}
+
+func StringVar(p *string, key string) {
+	vals[key] = p
 }
 
 func Init(c appengine.Context) {
