@@ -9,8 +9,8 @@ Your app requires secret values (OAuth secrets, API keys, passwords) and you rig
 
 ```
 const (
-	clientID := "123456.clientaccount.foo"
-	clientSecret := "s8p3rs3cr1t"
+	clientID     = "123456.clientaccount.foo"
+	clientSecret = "s8p3rs3cr1t"
 )
 ```
 
@@ -39,7 +39,7 @@ func doOAuth(c appengine.Context) {
 **Or define values like flags**
 ```
 var (
-	clientID =     value.String("client_id")
+	clientID     = value.String("client_id")
 	clientSecret = value.String("client_secret")
 )
 
