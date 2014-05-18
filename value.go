@@ -77,3 +77,19 @@ func Get(c appengine.Context, key string) string {
 
 	return e.Value
 }
+
+var vals = map[string]*string{}
+
+func String(key string) *string {
+	p := new(string)
+	vals[key] = p
+	return p
+}
+
+func Init(c appengine.Context) {
+	// TODO: GetMulti
+	for k, _ := range vals {
+		v := Get(c, k)
+		vals[k] = &v
+	}
+}
