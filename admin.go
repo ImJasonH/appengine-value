@@ -2,10 +2,10 @@ package value
 
 import (
 	"errors"
-	"time"
 	"fmt"
-	"net/http"
 	"html/template"
+	"net/http"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
