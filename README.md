@@ -24,15 +24,15 @@ import value "github.com/ImJasonH/appengine-value"
 func doOAuth(c appengine.Context) {
 	clientID := value.Get(c, "client_id")
 	clientSecret := value.Get(c, "client_secret")
-        // use clientID and clientSecret
+	// use clientID and clientSecret
 }
 ```
 
 If you have multiple values, you can **batch lookups**:
 ```
 func doOAuth(c appengine.Context) {
-	m := value.GetMulti(c, "client_id", "client_secret")
-	// use m["clientID"] and m["clientSecret"]
+	vals := value.GetMulti(c, "client_id", "client_secret")
+	// use vals["clientID"] and vals["clientSecret"]
 }
 ```
 
