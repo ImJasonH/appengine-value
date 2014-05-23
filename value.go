@@ -91,6 +91,8 @@ func GetMulti(c appengine.Context, key ...string) map[string]string {
 	return m
 }
 
+// TODO: Support flag-like syntax commented out below:
+/*
 var vals = map[string]*string{}
 
 // String defines a string value with specified name.
@@ -121,3 +123,4 @@ func Init(c appengine.Context) {
 		vals[k] = &v
 	}
 }
+*/

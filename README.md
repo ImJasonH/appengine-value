@@ -36,19 +36,6 @@ func doOAuth(c appengine.Context) {
 }
 ```
 
-**Or define values like flags**
-```
-var (
-	clientID     = value.String("client_id")
-	clientSecret = value.String("client_secret")
-)
-
-func doOAuth(c appengine.Context) {
-	value.Init(c)
-	// use *clientID and *clientSecret
-}
-```
-
 Configuration
 -----
 
