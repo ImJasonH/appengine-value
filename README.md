@@ -32,7 +32,7 @@ If you have multiple values, you can **batch lookups**:
 ```
 func doOAuth(c appengine.Context) {
 	vals := value.GetMulti(c, "client_id", "client_secret")
-	// use vals["clientID"] and vals["clientSecret"]
+        clientID, clientSecret := vals["client_id"], vals["client_secret"]
 }
 ```
 
