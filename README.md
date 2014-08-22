@@ -9,8 +9,8 @@ Your app requires secret values (OAuth secrets, API keys, passwords) and you rig
 
 ```
 const (
-	clientID     = "123456.clientaccount.foo"
-	clientSecret = "s8p3rs3cr1t"
+  clientID     = "123456.clientaccount.foo"
+  clientSecret = "s8p3rs3cr1t"
 )
 ```
 
@@ -22,17 +22,17 @@ Solution
 import value "github.com/ImJasonH/appengine-value"
 
 func doOAuth(c appengine.Context) {
-	clientID := value.Get(c, "client_id")
-	clientSecret := value.Get(c, "client_secret")
-	// use clientID and clientSecret
+  clientID := value.Get(c, "client_id")
+  clientSecret := value.Get(c, "client_secret")
+  // use clientID and clientSecret
 }
 ```
 
 If you have multiple values, you can **batch lookups**:
 ```
 func doOAuth(c appengine.Context) {
-	vals := value.GetMulti(c, "client_id", "client_secret")
-        clientID, clientSecret := vals["client_id"], vals["client_secret"]
+  vals := value.GetMulti(c, "client_id", "client_secret")
+  clientID, clientSecret := vals["client_id"], vals["client_secret"]
 }
 ```
 
